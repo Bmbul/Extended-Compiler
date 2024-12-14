@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Common;
+using Compiler.Generator.Allocator;
 
 namespace Compiler.Generator.CodeGenerator
 {
@@ -10,5 +12,6 @@ namespace Compiler.Generator.CodeGenerator
         void GenerateSimpleAssignment(string destination, string source);
         void GenerateAssignmentAfterOperation(string destination, string firstVar, string secondVar, string operation);
         void GetGeneratedCode(string outputFileName);
+        Register GenerateOperation(LexicalToken operand1, LexicalToken operand2, LexicalToken token);
     }
 }

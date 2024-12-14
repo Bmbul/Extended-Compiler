@@ -8,4 +8,6 @@ var d, e: integer;
 begin
 
 
+a := a + (b - c * (d + e) / f) * g;
+
 end.

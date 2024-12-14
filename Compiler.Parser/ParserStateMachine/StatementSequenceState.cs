@@ -1,11 +1,15 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Common;
 using Common.Utility;
+using Compiler.Generator.Allocator;
 using Compiler.Parser.Exceptions;
 
 namespace Compiler.Parser.ParserStateMachine
 {
     public class StatementSequenceState : ParsingStateBase
-    {
+    { 
         public StatementSequenceState(IParsingResultModifier parser) : base(parser)
         {
         }
@@ -28,34 +32,50 @@ namespace Compiler.Parser.ParserStateMachine
 
                 if (Parser.IsInValidVariableToken(token)) // a
                 {
-                    throw new ParsingException("Use of undeclared identifier.");
+                    throw new ParsingException($"Use of undeclared identifier: {token}");
                 }
+                
                 ReadAssignmentOperator(); // :=
-                var firstVariable = GetNextVariable(); // b
-
-                var possibleArithmeticOperator = Parser.GetNextToken();
-                if (possibleArithmeticOperator.IsArithmeticOperation()) // + or -
+                var expressionTokens = GetExpressionTokens();
+                
+                if (expressionTokens.Count == 1)
                 {
-                    var secondVariable = GetNextVariable(); // c
-
-                    if (!Parser.GetNextToken().IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.Semicolon])) // ;
-                    {
-                        throw new ParsingException($"End of statement expected.");
-                    }
-                    Parser.GenerateAssignmentWithOperations(token, firstVariable, secondVariable, possibleArithmeticOperator);
-                }
-                else if (possibleArithmeticOperator.IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.Semicolon])) // ;
-                {
-                    Parser.GenerateSimpleAssignment(token, firstVariable);
+                    Parser.GenerateSimpleAssignment(token, expressionTokens.First());
                 }
                 else
                 {
-                    throw new ParsingException($"Expected end of statement or arithmetic operator.", possibleArithmeticOperator);
+                    foreach (var orderedToken in expressionTokens)
+                    {
+                        Console.WriteLine(orderedToken.Value);
+                    }
+                    ProcessExpression(expressionTokens);
                 }
                 token = Parser.GetNextToken();
             }
         }
 
+        private List<LexicalToken> GetExpressionTokens()
+        {
+            List<LexicalToken> tokens = new List<LexicalToken>();
+            var token = Parser.GetNextToken();
+            if (token.IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.Semicolon]) || 
+                token.IsArithmeticOperation())
+            {
+                throw new ParsingException($"Unexpected Token. Expected identifier or a constant.", token);
+            }
+            
+            tokens.Add(token);
+            while (Parser.TryGetNextToken(out token))
+            {
+                if (token.IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.Semicolon]))
+                {
+                    return tokens;
+                }
+                tokens.Add(token);
+            }
+            throw new ParsingException($"Unexpected end of expression: Expected semicolon.", token);
+        }
+        
         private void ReadAssignmentOperator()
         {
             var assignmentOperator = Parser.GetNextToken();
@@ -64,22 +84,99 @@ namespace Compiler.Parser.ParserStateMachine
                 throw new ParsingException($"Assignment operator expected.", assignmentOperator);
             }
         }
-
-        private LexicalToken GetNextVariable()
+        
+        private Register ProcessExpression(IEnumerable<LexicalToken> infixTokens)
         {
-            var variable = Parser.GetNextToken();
-            if (variable.IsIdentifier())
+            Stack<LexicalToken> stack = new Stack<LexicalToken>();
+            Stack<LexicalToken> _reversedPolishNotationStack = new Stack<LexicalToken>();
+            int parenthesisCount = 0;
+            LexicalToken lastToken = null;
+
+            foreach (var token in infixTokens)
             {
-                if (!Parser.IdentifierExists(variable.Value))
+                if (token.IsIdentifier() || token.IsNumber())
                 {
-                    throw new ParsingException("Use of undeclared identifier.");
+                    _reversedPolishNotationStack.Push(token);
                 }
+                else if (token.IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.OpeningBracket]))
+                {
+                    parenthesisCount++;
+                    stack.Push(token);
+                }
+                else if (token.IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.ClosingBracket]))
+                {
+                    parenthesisCount--;
+                    if (parenthesisCount < 0)
+                    {
+                        throw new ParsingException($"Mismatched closing parenthesis. Token: {token.Value}, expression may have too many closing brackets.");
+                    }
+
+                    while (stack.Count > 0 && !stack.Peek().IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.OpeningBracket]))
+                    {
+                        _reversedPolishNotationStack.Push(stack.Pop());
+                    }
+                    if (stack.Count == 0 || !stack.Peek().IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.OpeningBracket]))
+                    {
+                        throw new ParsingException($"Opening parenthesis expected before token: {token.Value}. Unmatched closing parenthesis found.");
+                    }
+                    stack.Pop();
+                }
+                else if (token.IsArithmeticOperation())
+                {
+                    if (lastToken.IsArithmeticOperation() || lastToken.IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.OpeningBracket]))
+                    {
+                        throw new ParsingException($"Invalid operator placement. Found operator: {token.Value} after token: {lastToken.Value}. Operators cannot appear consecutively or immediately after opening brackets.");
+                    }
+                    
+                    if (_reversedPolishNotationStack.Count < 2)
+                    {
+                        throw new ParsingException("Not enough operands for the operation.");
+                    }
+                    var operand2 = _reversedPolishNotationStack.Pop();
+                    var operand1 = _reversedPolishNotationStack.Pop();
+
+                    var register = Parser.GenerateOperation(operand1, operand2, token);
+
+                    _reversedPolishNotationStack.Push(new LexicalToken(LexemType.None, register.Name));
+                    
+                    while (stack.Count > 0 && stack.Peek().GetPrecedence() >= token.GetPrecedence())
+                    {
+                        _reversedPolishNotationStack.Push(stack.Pop());
+                    }
+                    stack.Push(token);
+                }
+                else
+                {
+                    throw new ParsingException($"Unexpected token: {token.Value}. Token is not recognized as a valid operator, operand, or parenthesis.");
+                }
+
+                lastToken = token;
             }
-            else if(!variable.IsNumber())
+
+            if (parenthesisCount != 0)
             {
-                throw new ParsingException("Number or Identifier expected.", variable);
+                throw new ParsingException($"Mismatched parentheses. Found {parenthesisCount} more opening parentheses than closing ones.");
             }
-            return variable;
+
+            // while (stack.Count > 0)
+            // {
+            //     var op = stack.Pop();
+            //     if (op.IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.OpeningBracket]))
+            //     {
+            //         throw new ParsingException($"Unmatched opening parenthesis.");
+            //     }
+            //     _reversedPolishNotationStack.Push(op);
+            // }
+            
+            if (_reversedPolishNotationStack.Count == 1)
+            {
+                var finalToken = _reversedPolishNotationStack.Pop();
+                return new Register(finalToken.Value);
+            }
+            else
+            {
+                throw new ParsingException("Invalid expression. Too many or too few operands for the operators.");
+            }
         }
     }
 }

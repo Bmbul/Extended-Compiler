@@ -1,3 +1,4 @@
+using System;
 using Common.Utility;
 
 namespace Common
@@ -55,9 +56,21 @@ namespace Common
         
         public bool IsDataType()
         {
-            return Type == LexemType.LexemSymbols &&
+            return Type == LexemType.Keyword &&
                    (Value == Constants.TypesToLexem[LexicalTokensEnum.String] ||
                     Value == Constants.TypesToLexem[LexicalTokensEnum.Integer]);
+        }
+        
+        public int GetPrecedence()
+        {
+            var op = Value;
+            
+            if (op == Constants.TypesToLexem[LexicalTokensEnum.Plus] || op == Constants.TypesToLexem[LexicalTokensEnum.Minus])
+                return 1;
+            
+            if (op == Constants.TypesToLexem[LexicalTokensEnum.Multiplication] || op == Constants.TypesToLexem[LexicalTokensEnum.Division])
+                return 2;
+            return 0;
         }
     }
 

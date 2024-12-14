@@ -1,9 +1,10 @@
 using System;
 using Common;
+using Common.Exceptions;
 
 namespace Compiler.Parser.Exceptions
 {
-    public class ParsingException : ApplicationException
+    public class ParsingException : CompilerExceptions
     {
         public ParsingException(string exception) 
             : base(exception)

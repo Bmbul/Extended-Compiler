@@ -2,19 +2,22 @@ using System;
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
-using System.Diagnostics;
+using Common;
 using Common.Utility;
+using Compiler.Generator.Allocator;
 
 namespace Compiler.Generator.CodeGenerator
 {
     public class AssemblerGenerator : IAssemblerGenerator
     {
         private readonly StringBuilder _assemblerCode;
+        private readonly IRegisterAllocator _registerAllocator;
         private readonly string _programName;
         
         public AssemblerGenerator(string programName)
         {
             _programName = programName;
+            _registerAllocator = new RegisterAllocator();
             _assemblerCode = new StringBuilder();
         }
 
@@ -44,7 +47,7 @@ namespace Compiler.Generator.CodeGenerator
         public void AddGlobalAndTextSection()
         {
             _assemblerCode.AppendLine(".section .text");
-            _assemblerCode.AppendLine(".global _start");
+            _assemblerCode.AppendLine(".globl _start");
             _assemblerCode.AppendLine("_start:");
         }
         
@@ -62,28 +65,34 @@ namespace Compiler.Generator.CodeGenerator
 
         public void GenerateAssignmentAfterOperation(string destination, string firstVar, string secondVar, string operation)
         {
-            _assemblerCode.AppendLine($"\tMOVQ {firstVar}, %rax");
+            var register = _registerAllocator.Allocate().Name;
+            _assemblerCode.AppendLine($"\tMOVQ {firstVar}, %{register}");
 
             if (operation == Constants.TypesToLexem[LexicalTokensEnum.Plus])
             {
-                _assemblerCode.AppendLine($"\tADDQ {secondVar}, %rax");
+                _assemblerCode.AppendLine($"\tADDQ {secondVar}, %{register}");
             }
             else if (operation == Constants.TypesToLexem[LexicalTokensEnum.Minus])
             {
-
-                _assemblerCode.AppendLine(
-                    $"\tSUBQ {secondVar}, %rax");
+                _assemblerCode.AppendLine($"\tSUBQ {secondVar}, %{register}");
             }
             else
             {
                 throw new NotImplementedException("Unsupported operation");
             }
-            _assemblerCode.AppendLine($"\tMOVQ %rax, {destination}");
+            _assemblerCode.AppendLine($"\tMOVQ %{register}, {destination}");
         }
         
         public void GetGeneratedCode(string outputFileName)
         {
             File.WriteAllText(outputFileName, _assemblerCode.ToString());
+        }
+
+        public Register GenerateOperation(LexicalToken operand1, LexicalToken operand2, LexicalToken token)
+        {
+            var register = _registerAllocator.Allocate(true);
+
+            return register;
         }
     }
 }

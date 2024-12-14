@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using Common;
 using Common.Utility;
+using Compiler.Generator.Allocator;
 using Compiler.Generator.CodeGenerator;
 using Compiler.Parser.Exceptions;
 using Compiler.Parser.ParserStateMachine;
@@ -164,6 +166,12 @@ namespace Compiler.Parser
         public void GenerateExitWithLastOperationResult()
         {
             _assemblerGenerator.GenerateExitWithLastOperationResult();
+        }
+
+        public Register GenerateOperation(LexicalToken operand1, LexicalToken operand2, LexicalToken token)
+        {
+            var register = _assemblerGenerator.GenerateOperation(operand1, operand2, token);
+            return register;
         }
 
         private string GetVariableAssemblerNaming(LexicalToken token)

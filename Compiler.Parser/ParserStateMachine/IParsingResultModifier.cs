@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Common;
+using Compiler.Generator.Allocator;
 
 namespace Compiler.Parser.ParserStateMachine
 {
@@ -17,5 +18,7 @@ namespace Compiler.Parser.ParserStateMachine
         void GenerateAssignmentWithOperations(LexicalToken token, LexicalToken firstVariable, LexicalToken secondVariable, LexicalToken operation);
 
         void GenerateExitWithLastOperationResult();
+        
+        Register GenerateOperation(LexicalToken operand1, LexicalToken operand2, LexicalToken token);
     }
 }
