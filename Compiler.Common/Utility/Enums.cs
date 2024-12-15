@@ -22,7 +22,6 @@ namespace Common.Utility
         Plus,               // +
         Minus,              // -
         Multiplication,     // *
-        Division,           // /
         Assignment,         // :=
         Colon,              // :
         Semicolon,          // ;
@@ -37,7 +36,6 @@ namespace Common.Utility
         EndKeyword,         // end
         Integer,            // integer
         String,             // string
-        
-        // WriteKeyword        // write
+        WriteKeyword        // write
     }
 }

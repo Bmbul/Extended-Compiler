@@ -13,7 +13,10 @@ namespace Compiler.Generator.CodeGenerator
         private readonly StringBuilder _assemblerCode;
         private readonly IRegisterAllocator _registerAllocator;
         private readonly string _programName;
-        
+        private readonly string minusOperator = Constants.TypesToLexem[LexicalTokensEnum.Minus];
+        private readonly string plusOperator = Constants.TypesToLexem[LexicalTokensEnum.Plus];
+        private readonly string multiplicationOperator = Constants.TypesToLexem[LexicalTokensEnum.Multiplication];
+
         public AssemblerGenerator(string programName)
         {
             _programName = programName;
@@ -23,6 +26,7 @@ namespace Compiler.Generator.CodeGenerator
 
         public void DeclareVariables(Dictionary<string, string> variables)
         {
+            AddRoDataSection();
             if (variables.Count <= 0)
             {
                 Console.WriteLine("No variables declared");
@@ -50,7 +54,15 @@ namespace Compiler.Generator.CodeGenerator
             _assemblerCode.AppendLine(".globl _start");
             _assemblerCode.AppendLine("_start:");
         }
-        
+
+        public void AddRoDataSection()
+        {
+            _assemblerCode.AppendLine(".section .rodata");
+            _assemblerCode.AppendLine("fmt:");
+            _assemblerCode.AppendLine("\t.asciz \"%d\\n\"");
+            _assemblerCode.AppendLine();
+        }
+
         public void GenerateExitWithLastOperationResult()
         {
             _assemblerCode.AppendLine("\n\tMOVQ %rax, %rdi");
@@ -58,29 +70,22 @@ namespace Compiler.Generator.CodeGenerator
             _assemblerCode.AppendLine("\tSYSCALL");
         }
 
-        public void GenerateSimpleAssignment(string destination, string source)
+        public void GenerateSimpleAssignment(LexicalToken destination, LexicalToken source)
         {
-            _assemblerCode.AppendLine($"\tMOVQ {source}, {destination}");
+            var sourceNaming = GetVariableAssemblerNaming(source);
+            var destinationNaming = GetVariableAssemblerNaming(destination);
+            _assemblerCode.AppendLine($"\tMOVQ {sourceNaming}, {destinationNaming}");
         }
 
-        public void GenerateAssignmentAfterOperation(string destination, string firstVar, string secondVar, string operation)
+        private string GetVariableAssemblerNaming(LexicalToken token)
         {
-            var register = _registerAllocator.Allocate().Name;
-            _assemblerCode.AppendLine($"\tMOVQ {firstVar}, %{register}");
-
-            if (operation == Constants.TypesToLexem[LexicalTokensEnum.Plus])
+            if (token.Type == LexemType.None)
             {
-                _assemblerCode.AppendLine($"\tADDQ {secondVar}, %{register}");
+                return $"%{token.Value}";
             }
-            else if (operation == Constants.TypesToLexem[LexicalTokensEnum.Minus])
-            {
-                _assemblerCode.AppendLine($"\tSUBQ {secondVar}, %{register}");
-            }
-            else
-            {
-                throw new NotImplementedException("Unsupported operation");
-            }
-            _assemblerCode.AppendLine($"\tMOVQ %{register}, {destination}");
+            
+            return token.IsNumber() ? $"${token.Value}"
+                : $"{_programName}_{token.Value}";
         }
         
         public void GetGeneratedCode(string outputFileName)
@@ -88,9 +93,43 @@ namespace Compiler.Generator.CodeGenerator
             File.WriteAllText(outputFileName, _assemblerCode.ToString());
         }
 
-        public Register GenerateOperation(LexicalToken operand1, LexicalToken operand2, LexicalToken token)
+        public Register GenerateOperation(LexicalToken operand1, LexicalToken operand2, LexicalToken operatorToken)
         {
-            var register = _registerAllocator.Allocate(true);
+            Register register = null;
+            var operation = operatorToken.Value;
+            if (operand1.Type == LexemType.None)
+            {
+                register = _registerAllocator.GetByName(operand1.Value);
+            }
+            else
+            {
+                register = _registerAllocator.Allocate(true);
+                var operand1Naming = GetVariableAssemblerNaming(operand1);
+                _assemblerCode.AppendLine($"\tMOVQ {operand1Naming}, %{register.Name}");
+            }
+
+            var operand2Naming = GetVariableAssemblerNaming(operand2);
+            if (operation == plusOperator)
+            {
+                _assemblerCode.AppendLine($"\tADDQ {operand2Naming}, %{register.Name}");
+            }
+            else if(operation == minusOperator)
+            {
+                _assemblerCode.AppendLine($"\tSUBQ {operand2Naming}, %{register.Name}");
+            }
+            else if (operation == multiplicationOperator)
+            {
+                _assemblerCode.AppendLine($"\tIMULQ {operand2Naming}, %{register.Name}");
+            }
+            else
+            {
+                throw new NotImplementedException("Unsupported operation");
+            }
+            
+            if (operand2.Type == LexemType.None)
+            {
+                _registerAllocator.Deallocate(operand2.Value);
+            }
 
             return register;
         }

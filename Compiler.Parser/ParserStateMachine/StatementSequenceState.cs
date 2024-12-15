@@ -10,6 +10,8 @@ namespace Compiler.Parser.ParserStateMachine
 {
     public class StatementSequenceState : ParsingStateBase
     { 
+        private readonly Stack<LexicalToken> _reversedPolishNotationStack = new Stack<LexicalToken>();
+
         public StatementSequenceState(IParsingResultModifier parser) : base(parser)
         {
         }
@@ -37,19 +39,20 @@ namespace Compiler.Parser.ParserStateMachine
                 
                 ReadAssignmentOperator(); // :=
                 var expressionTokens = GetExpressionTokens();
-                
-                if (expressionTokens.Count == 1)
+
+                LexicalToken assigningToken = null;
+                if (expressionTokens.Count > 1)
                 {
-                    Parser.GenerateSimpleAssignment(token, expressionTokens.First());
+                    var resultRegister = ProcessExpression(expressionTokens);
+                    assigningToken = new LexicalToken(LexemType.None, resultRegister.Name);
                 }
                 else
                 {
-                    foreach (var orderedToken in expressionTokens)
-                    {
-                        Console.WriteLine(orderedToken.Value);
-                    }
-                    ProcessExpression(expressionTokens);
+                    assigningToken = expressionTokens.First();
                 }
+                
+                Parser.GenerateSimpleAssignment(token,assigningToken);
+
                 token = Parser.GetNextToken();
             }
         }
@@ -88,7 +91,6 @@ namespace Compiler.Parser.ParserStateMachine
         private Register ProcessExpression(IEnumerable<LexicalToken> infixTokens)
         {
             Stack<LexicalToken> stack = new Stack<LexicalToken>();
-            Stack<LexicalToken> _reversedPolishNotationStack = new Stack<LexicalToken>();
             int parenthesisCount = 0;
             LexicalToken lastToken = null;
 
@@ -113,8 +115,9 @@ namespace Compiler.Parser.ParserStateMachine
 
                     while (stack.Count > 0 && !stack.Peek().IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.OpeningBracket]))
                     {
-                        _reversedPolishNotationStack.Push(stack.Pop());
+                        AddTokenToStack(stack.Pop());
                     }
+
                     if (stack.Count == 0 || !stack.Peek().IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.OpeningBracket]))
                     {
                         throw new ParsingException($"Opening parenthesis expected before token: {token.Value}. Unmatched closing parenthesis found.");
@@ -123,26 +126,16 @@ namespace Compiler.Parser.ParserStateMachine
                 }
                 else if (token.IsArithmeticOperation())
                 {
-                    if (lastToken.IsArithmeticOperation() || lastToken.IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.OpeningBracket]))
+                    if (lastToken?.IsArithmeticOperation() == true || lastToken?.IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.OpeningBracket]) == true)
                     {
-                        throw new ParsingException($"Invalid operator placement. Found operator: {token.Value} after token: {lastToken.Value}. Operators cannot appear consecutively or immediately after opening brackets.");
+                        throw new ParsingException($"Invalid operator placement. Found operator: {token.Value} after token: {lastToken?.Value}. Operators cannot appear consecutively or immediately after opening brackets.");
                     }
-                    
-                    if (_reversedPolishNotationStack.Count < 2)
-                    {
-                        throw new ParsingException("Not enough operands for the operation.");
-                    }
-                    var operand2 = _reversedPolishNotationStack.Pop();
-                    var operand1 = _reversedPolishNotationStack.Pop();
 
-                    var register = Parser.GenerateOperation(operand1, operand2, token);
-
-                    _reversedPolishNotationStack.Push(new LexicalToken(LexemType.None, register.Name));
-                    
                     while (stack.Count > 0 && stack.Peek().GetPrecedence() >= token.GetPrecedence())
                     {
-                        _reversedPolishNotationStack.Push(stack.Pop());
+                        AddTokenToStack(stack.Pop());
                     }
+
                     stack.Push(token);
                 }
                 else
@@ -158,25 +151,43 @@ namespace Compiler.Parser.ParserStateMachine
                 throw new ParsingException($"Mismatched parentheses. Found {parenthesisCount} more opening parentheses than closing ones.");
             }
 
-            // while (stack.Count > 0)
-            // {
-            //     var op = stack.Pop();
-            //     if (op.IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.OpeningBracket]))
-            //     {
-            //         throw new ParsingException($"Unmatched opening parenthesis.");
-            //     }
-            //     _reversedPolishNotationStack.Push(op);
-            // }
-            
-            if (_reversedPolishNotationStack.Count == 1)
+            while (stack.Count > 0)
             {
-                var finalToken = _reversedPolishNotationStack.Pop();
-                return new Register(finalToken.Value);
+                var top = stack.Pop();
+                if (top.IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.OpeningBracket]))
+                {
+                    throw new ParsingException("Unmatched opening parenthesis.");
+                }
+                AddTokenToStack(top);
             }
-            else
+
+            if (_reversedPolishNotationStack.Count != 1)
             {
                 throw new ParsingException("Invalid expression. Too many or too few operands for the operators.");
             }
+
+            var finalToken = _reversedPolishNotationStack.Pop();
+            return new Register(finalToken.Value);
+        }
+
+        private void AddTokenToStack(LexicalToken token)
+        {
+            if (!token.IsArithmeticOperation())
+            {
+                _reversedPolishNotationStack.Push(token);
+                return;
+            }
+
+            if (_reversedPolishNotationStack.Count < 2)
+            {
+                throw new ParsingException("Not enough operands for the operation.");
+            }
+
+            var operand2 = _reversedPolishNotationStack.Pop();
+            var operand1 = _reversedPolishNotationStack.Pop();
+            var register = Parser.GenerateOperation(operand1, operand2, token);
+
+            _reversedPolishNotationStack.Push(new LexicalToken(LexemType.None, register.Name));
         }
     }
 }

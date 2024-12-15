@@ -31,17 +31,22 @@ namespace Compiler.Generator.Allocator
             throw new AllocatorException("Cannot allocate any register. All the registers are in use.");
         }
 
-        public void Deallocate(string name)
+        public Register GetByName(string name)
         {
             foreach (var register in _registers)
             {
                 if (register.Name != name) 
                     continue;
-                
-                register.IsUsed = false;
-                return;
+
+                return register;
             }
-            throw new AllocatorException("Cannot allocate any register. All the registers are in use.");
+            throw new AllocatorException($"Cound not find the register with name: {name}.");
+        }
+
+        public void Deallocate(string name)
+        {
+            var register = GetByName(name);
+            register.IsUsed = false;
         }
 
         public void DeallocateAll()

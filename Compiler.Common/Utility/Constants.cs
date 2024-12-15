@@ -17,7 +17,6 @@ namespace Common.Utility
         private static readonly string PlusToken = "+";
         private static readonly string MinusToken = "-";
         private static readonly string MultiplicationToken = "*";
-        private static readonly string DivisionToken = "/";
         private static readonly string AssignmentToken = ":=";
         private static readonly string ColonToken = ":";
         private static readonly string SemicolonToken = ";";
@@ -34,8 +33,7 @@ namespace Common.Utility
             EndKeyword,
             IntegerKeyword,
             StringKeyword,
-            
-            // WriteKeyword
+            WriteKeyword
         };
         
         public static readonly List<string> LexicalTokens = new List<string>
@@ -43,7 +41,6 @@ namespace Common.Utility
             PlusToken,
             MinusToken,
             MultiplicationToken,
-            DivisionToken,
             AssignmentToken,
             ColonToken,
             SemicolonToken,
@@ -63,7 +60,6 @@ namespace Common.Utility
             { LexicalTokensEnum.Plus, PlusToken },
             { LexicalTokensEnum.Minus, MinusToken},
             { LexicalTokensEnum.Multiplication, MultiplicationToken},
-            { LexicalTokensEnum.Division, DivisionToken},
             { LexicalTokensEnum.Assignment, AssignmentToken },
             { LexicalTokensEnum.Colon, ColonToken },
             { LexicalTokensEnum.Semicolon, SemicolonToken },
@@ -79,7 +75,7 @@ namespace Common.Utility
             { LexicalTokensEnum.Integer, IntegerKeyword },
             { LexicalTokensEnum.String, StringKeyword },
 
-            // { LexicalTokensEnum.WriteKeyword, WriteKeyword}
+            { LexicalTokensEnum.WriteKeyword, WriteKeyword}
         };
         
         public static readonly Dictionary<LexemType, string> LexemTypeToString = new Dictionary<LexemType, string>

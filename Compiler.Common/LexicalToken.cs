@@ -50,8 +50,7 @@ namespace Common
             return Type == LexemType.LexemSymbols &&
                    (Value == Constants.TypesToLexem[LexicalTokensEnum.Plus] ||
                     Value == Constants.TypesToLexem[LexicalTokensEnum.Minus] ||
-                    Value == Constants.TypesToLexem[LexicalTokensEnum.Multiplication] ||
-                    Value == Constants.TypesToLexem[LexicalTokensEnum.Division]);
+                    Value == Constants.TypesToLexem[LexicalTokensEnum.Multiplication]);
         }
         
         public bool IsDataType()
@@ -68,7 +67,7 @@ namespace Common
             if (op == Constants.TypesToLexem[LexicalTokensEnum.Plus] || op == Constants.TypesToLexem[LexicalTokensEnum.Minus])
                 return 1;
             
-            if (op == Constants.TypesToLexem[LexicalTokensEnum.Multiplication] || op == Constants.TypesToLexem[LexicalTokensEnum.Division])
+            if (op == Constants.TypesToLexem[LexicalTokensEnum.Multiplication])
                 return 2;
             return 0;
         }

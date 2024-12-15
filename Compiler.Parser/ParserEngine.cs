@@ -60,10 +60,16 @@ namespace Compiler.Parser
 
         public void ValidateAssignment(LexicalToken variableToken, LexicalToken assigneeToken)
         {
-			if (assigneeToken.Type == LexemType.Identifier)
+            if (assigneeToken.Type == LexemType.None)
+            {
+                return;
+            }
+			
+            if (assigneeToken.Type == LexemType.Identifier)
 			{
 				ValidateVariableIsDefined(assigneeToken.Value);
 			}
+            
             var assigneeType = assigneeToken.IsNumber() ? _integerKeyword : _parsingResult.Variables[assigneeToken.Value].Type;
             ValidateAssignment(variableToken, assigneeType);
         }
@@ -82,7 +88,7 @@ namespace Compiler.Parser
             _operationValidator.ValidateAssignment(resultType, assigneeType);
         }
 
-        public void ValidateOperation(LexicalToken first, LexicalToken second, LexicalToken operation, out string resultType)
+        public void ValidateOperation(LexicalToken first, LexicalToken second, LexicalToken operation)
         {
             if (first.Type == LexemType.Identifier)
             {
@@ -93,10 +99,9 @@ namespace Compiler.Parser
                 ValidateVariableIsDefined(second.Value);
             }
             
-            var firstType = first.IsNumber() ? _integerKeyword : _parsingResult.Variables[first.Value].Type;
-            var secondType = second.IsNumber() ? _integerKeyword : _parsingResult.Variables[second.Value].Type;
-
-            resultType = _operationValidator.ValidateOperation(firstType, secondType, operation);
+            // var firstType = first.IsNumber() ? _integerKeyword : _parsingResult.Variables[first.Value].Type;
+            // var secondType = second.IsNumber() ? _integerKeyword : _parsingResult.Variables[second.Value].Type;
+            // _operationValidator.ValidateOperation(firstType, secondType, operation);
         }
         
         public bool IdentifierExists(string variableValue)
@@ -124,59 +129,25 @@ namespace Compiler.Parser
             var variables = _parsingResult.GetVariables();
             _assemblerGenerator.DeclareVariables(variables);
         }
-
-        public void DeclareFunctions()
-        {
-            // should be modified
-            var variables = _parsingResult.GetVariables();
-            _assemblerGenerator.DeclareVariables(variables);
-        }
         
         public void GenerateSimpleAssignment(LexicalToken token, LexicalToken firstVariable)
         {
             ValidateAssignment(token, firstVariable); // validate a := b
             
-            var destination = $"{_parsingResult.ProgramName}_{token.Value}";
-            var source = GetVariableAssemblerNaming(firstVariable);
-            _assemblerGenerator.GenerateSimpleAssignment(destination, source);
+            _assemblerGenerator.GenerateSimpleAssignment(token, firstVariable);
             _parsingResult.SetAssigned(token.Value);
         }
-
-        public void GenerateAssignmentWithOperations(LexicalToken token, LexicalToken firstVariable, LexicalToken secondVariable,
-            LexicalToken operation)
-        {
-            ValidateOperation(firstVariable, secondVariable, operation,
-                out var resultingType); // validate b [operator] c (out resultType)
-
-            if (firstVariable.IsNumber() && secondVariable.IsNumber())
-            {
-                OptimizedAssignmentForNumbers(token, firstVariable, secondVariable, operation);
-            }
-            else
-            {
-                ValidateAssignment(token, resultingType); // validate a := result of (b [operator] c)
-                var destination = $"{_parsingResult.ProgramName}_{token.Value}";
-                var firstVar = GetVariableAssemblerNaming(firstVariable);
-                var secondVar = GetVariableAssemblerNaming(secondVariable);
-                _assemblerGenerator.GenerateAssignmentAfterOperation(destination, firstVar, secondVar, operation.Value);
-                _parsingResult.SetAssigned(token.Value);
-            }
-        }
-
+        
         public void GenerateExitWithLastOperationResult()
         {
             _assemblerGenerator.GenerateExitWithLastOperationResult();
         }
 
-        public Register GenerateOperation(LexicalToken operand1, LexicalToken operand2, LexicalToken token)
+        public Register GenerateOperation(LexicalToken operand1, LexicalToken operand2, LexicalToken operationToken)
         {
-            var register = _assemblerGenerator.GenerateOperation(operand1, operand2, token);
+            ValidateOperation(operand1, operand2, operationToken);  
+            var register = _assemblerGenerator.GenerateOperation(operand1, operand2, operationToken);
             return register;
-        }
-
-        private string GetVariableAssemblerNaming(LexicalToken token)
-        {
-            return token.IsNumber() ? $"${token.Value}" : $"{_parsingResult.ProgramName}_{token.Value}";
         }
         
         private void OptimizedAssignmentForNumbers(LexicalToken token, LexicalToken firstVariable, LexicalToken secondVariable,

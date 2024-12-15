@@ -15,10 +15,7 @@ namespace Compiler.Parser.ParserStateMachine
         void DeclareVariables();
         void AddStatementsSection();
         void GenerateSimpleAssignment(LexicalToken token, LexicalToken firstVariable);
-        void GenerateAssignmentWithOperations(LexicalToken token, LexicalToken firstVariable, LexicalToken secondVariable, LexicalToken operation);
-
         void GenerateExitWithLastOperationResult();
-        
-        Register GenerateOperation(LexicalToken operand1, LexicalToken operand2, LexicalToken token);
+        Register GenerateOperation(LexicalToken operand1, LexicalToken operand2, LexicalToken operationToken);
     }
 }
