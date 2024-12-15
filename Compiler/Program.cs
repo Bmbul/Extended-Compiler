@@ -27,7 +27,10 @@ public static class Program
             var fileNameWithoutExtention = Path.GetFileNameWithoutExtension(args[0]);
             parserEngine.Parse(fileNameWithoutExtention);
 
-            ICommandRunner commandRunner = new CommandRunner("gcc", $"-nostartfiles -no-pie -o {fileNameWithoutExtention} {fileNameWithoutExtention}.s");
+            ICommandRunner commandRunner = new CommandRunner(
+                "gcc", 
+                $"-nostartfiles -no-pie -o {fileNameWithoutExtention} {fileNameWithoutExtention}.s -lc -Wl,-dynamic-linker,/lib64/ld-linux-x86-64.so.2"
+            );
             commandRunner.RunCommand();
         }
         catch (Exception e)
