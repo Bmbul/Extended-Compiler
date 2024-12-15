@@ -23,38 +23,82 @@ namespace Compiler.Parser.ParserStateMachine
             {
                 if (token.IsKeyword(Constants.TypesToLexem[LexicalTokensEnum.EndKeyword]))
                 {
-                    if (Parser.GetNextToken().IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.Dot]))
-                    {
-                        Parser.GenerateExitWithLastOperationResult();
-                        return null; // this is the end
-                    }
-
-                    throw new ParsingException("Ending `.` char expected");
-                }
-
-                if (Parser.IsInValidVariableToken(token)) // a
-                {
-                    throw new ParsingException($"Use of undeclared identifier: {token}");
+                    return OnReadingEnd();
                 }
                 
-                ReadAssignmentOperator(); // :=
-                var expressionTokens = GetExpressionTokens();
-
-                LexicalToken assigningToken = null;
-                if (expressionTokens.Count > 1)
+                if (token.IsKeyword(Constants.TypesToLexem[LexicalTokensEnum.WriteKeyword]))
                 {
-                    var resultRegister = ProcessExpression(expressionTokens);
-                    assigningToken = new LexicalToken(LexemType.None, resultRegister.Name);
+                    OnReadingWriteKeyword();
                 }
-                else
-                {
-                    assigningToken = expressionTokens.First();
-                }
-                
-                Parser.GenerateSimpleAssignment(token,assigningToken);
 
+                if (token.IsIdentifier())
+                {
+                    OnReadingAssignmentExpression(token);
+                }
                 token = Parser.GetNextToken();
             }
+        }
+
+        private void OnReadingAssignmentExpression(LexicalToken token)
+        {
+            if (Parser.IsInvalidVariableToken(token)) // a
+            {
+                throw new ParsingException($"Use of undeclared identifier: {token}");
+            }
+                
+            ReadAssignmentOperator(); // :=
+            var expressionTokens = GetExpressionTokens();
+
+            LexicalToken assigningToken = null;
+            if (expressionTokens.Count > 1)
+            {
+                var resultRegister = ProcessExpression(expressionTokens);
+                assigningToken = new LexicalToken(LexemType.None, resultRegister.Name);
+            }
+            else
+            {
+                assigningToken = expressionTokens.First();
+            }
+                
+            Parser.GenerateSimpleAssignment(token,assigningToken);
+        }
+
+        private void OnReadingWriteKeyword()
+        {
+            if (!Parser.GetNextToken().IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.OpeningBracket]))
+            {
+                throw new ParsingException("`(` expected.");
+            }
+
+            var printingVariable = Parser.GetNextToken();
+            if (Parser.IsInvalidVariableToken(printingVariable))
+            {
+                throw new ParsingException($"Use of undeclared identifier: {printingVariable}");
+            }
+
+            Parser.ValidateVariableIsDefined(printingVariable.Value);
+            
+            if (!Parser.GetNextToken().IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.ClosingBracket]))
+            {
+                throw new ParsingException("`)` expected.");
+            }
+            if (!Parser.GetNextToken().IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.Semicolon]))
+            {
+                throw new ParsingException("`;` expected.");
+            }
+
+            Parser.GenerateWriteCall(printingVariable);
+        }
+
+        private IParsingState OnReadingEnd()
+        {
+            if (Parser.GetNextToken().IsSpecialToken(Constants.TypesToLexem[LexicalTokensEnum.Dot]))
+            {
+                Parser.GenerateExitWithLastOperationResult();
+                return null; // this is the end
+            }
+
+            throw new ParsingException("Ending `.` char expected");
         }
 
         private List<LexicalToken> GetExpressionTokens()

@@ -53,12 +53,12 @@ namespace Compiler.Parser
             return _tokens.TryGetNextToken(out lexicalToken);
         }
 
-        public bool IsInValidVariableToken(LexicalToken token)
+        public bool IsInvalidVariableToken(LexicalToken token)
         {
             return token.IsIdentifier() && !_parsingResult.Variables.ContainsKey(token.Value);
         }
 
-        public void ValidateAssignment(LexicalToken variableToken, LexicalToken assigneeToken)
+        private void ValidateAssignment(LexicalToken variableToken, LexicalToken assigneeToken)
         {
             if (assigneeToken.Type == LexemType.None)
             {
@@ -74,7 +74,7 @@ namespace Compiler.Parser
             ValidateAssignment(variableToken, assigneeType);
         }
 
-		private void ValidateVariableIsDefined(string variableName)
+		public void ValidateVariableIsDefined(string variableName)
 		{
             if (!_parsingResult.IsAssigned(variableName))
             {
@@ -82,13 +82,13 @@ namespace Compiler.Parser
             }
 		}
 
-        public void ValidateAssignment(LexicalToken variableToken, string assigneeType)
+        private void ValidateAssignment(LexicalToken variableToken, string assigneeType)
         {
             var resultType = variableToken.IsNumber() ? _integerKeyword : _parsingResult.Variables[variableToken.Value].Type;
             _operationValidator.ValidateAssignment(resultType, assigneeType);
         }
 
-        public void ValidateOperation(LexicalToken first, LexicalToken second, LexicalToken operation)
+        private void ValidateOperation(LexicalToken first, LexicalToken second, LexicalToken operation)
         {
             if (first.Type == LexemType.Identifier)
             {
@@ -149,7 +149,12 @@ namespace Compiler.Parser
             var register = _assemblerGenerator.GenerateOperation(operand1, operand2, operationToken);
             return register;
         }
-        
+
+        public void GenerateWriteCall(LexicalToken printingVariable)
+        {
+            _assemblerGenerator.GenerateWriteCall(printingVariable);
+        }
+
         private void OptimizedAssignmentForNumbers(LexicalToken token, LexicalToken firstVariable, LexicalToken secondVariable,
             LexicalToken operation)
         {

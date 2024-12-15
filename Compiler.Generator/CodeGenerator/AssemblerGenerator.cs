@@ -55,7 +55,7 @@ namespace Compiler.Generator.CodeGenerator
             _assemblerCode.AppendLine("_start:");
         }
 
-        public void AddRoDataSection()
+        private void AddRoDataSection()
         {
             _assemblerCode.AppendLine(".section .rodata");
             _assemblerCode.AppendLine("fmt:");
@@ -132,6 +132,14 @@ namespace Compiler.Generator.CodeGenerator
             }
 
             return register;
+        }
+
+        public void GenerateWriteCall(LexicalToken printingVariable)
+        {
+            _assemblerCode.AppendLine($"\tMOVQ {_programName}_{printingVariable.Value}, %rsi");
+            _assemblerCode.AppendLine("\tLEA fmt(%rip), %rdi");
+            _assemblerCode.AppendLine("\tMOVQ $0, %rax");
+            _assemblerCode.AppendLine("\tCALL printf");
         }
     }
 }

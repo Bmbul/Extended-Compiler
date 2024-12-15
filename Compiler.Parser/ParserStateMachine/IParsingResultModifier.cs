@@ -8,8 +8,9 @@ namespace Compiler.Parser.ParserStateMachine
     {
         LexicalToken GetNextToken();
         bool TryGetNextToken(out LexicalToken lexicalToken);
-        bool IsInValidVariableToken(LexicalToken token);
+        bool IsInvalidVariableToken(LexicalToken token);
         bool IdentifierExists(string variableValue);
+        void ValidateVariableIsDefined(string variableName);
         void SetProgramName(string programName);
         void AddVariables(List<string> identifiers, string dataType);
         void DeclareVariables();
@@ -17,5 +18,6 @@ namespace Compiler.Parser.ParserStateMachine
         void GenerateSimpleAssignment(LexicalToken token, LexicalToken firstVariable);
         void GenerateExitWithLastOperationResult();
         Register GenerateOperation(LexicalToken operand1, LexicalToken operand2, LexicalToken operationToken);
+        void GenerateWriteCall(LexicalToken printingVariable);
     }
 }

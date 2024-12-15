@@ -34,6 +34,10 @@ _start:
 	MOVQ test_a, %rbx
 	ADDQ %rax, %rbx
 	MOVQ %rbx, test_a
+	MOVQ test_a, %rsi
+	LEA fmt(%rip), %rdi
+	MOVQ $0, %rax
+	CALL printf
 
 	MOVQ %rax, %rdi
 	MOVQ $60, %rax

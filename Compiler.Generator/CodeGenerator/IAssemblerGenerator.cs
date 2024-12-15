@@ -8,10 +8,10 @@ namespace Compiler.Generator.CodeGenerator
     {
         void DeclareVariables(Dictionary<string, string> variables);
         void AddGlobalAndTextSection();
-        void AddRoDataSection();
         void GenerateExitWithLastOperationResult();
         void GenerateSimpleAssignment(LexicalToken destination, LexicalToken source);
         void GetGeneratedCode(string outputFileName);
         Register GenerateOperation(LexicalToken operand1, LexicalToken operand2, LexicalToken operatorToken);
+        void GenerateWriteCall(LexicalToken printingVariable);
     }
 }
